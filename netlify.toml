@@ -6,3 +6,10 @@
   for = "/*"
   [headers.values]
     Access-Control-Allow-Origin = "*"
+
+[functions]
+  node_bundler = "esbuild"
+
+[[functions]]
+  path = "/netlify/functions/simulate"
+  timeout = 300
