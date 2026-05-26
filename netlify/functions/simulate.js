@@ -5,6 +5,7 @@ const REPLICATE_TOKEN = process.env.REPLICATE_API_TOKEN;
 
 // 직원 코드 목록 (나중에 Supabase로 이전)
 const STAFF_CODES = {
+  "GUEST": { name: "일반고객", dailyLimit: 1 },
   "PROD-0001": { name: "직원1", dailyLimit: 8 },
   "PROD-0002": { name: "직원2", dailyLimit: 8 },
   "PROD-0003": { name: "직원3", dailyLimit: 8 },
