@@ -1,9 +1,6 @@
 // netlify/functions/simulate.js
-// Replicate API 토큰을 서버에 숨기고, 직원 코드 검증 + 사용 횟수 체크
-
 const REPLICATE_TOKEN = process.env.REPLICATE_API_TOKEN;
 
-// 직원 코드 목록 (나중에 Supabase로 이전)
 const STAFF_CODES = {
   "GUEST": { name: "일반고객", dailyLimit: 1 },
   "PROD-0001": { name: "직원1", dailyLimit: 8 },
@@ -19,11 +16,10 @@ const STAFF_CODES = {
   "MASTER-9999": { name: "대표", dailyLimit: 99999 },
 };
 
-// 임시 사용 기록 (메모리 - 나중에 Supabase로)
 const usageLog = {};
 
 function getTodayKey() {
-  return new Date().toISOString().split("T")[0]; // "2026-05-26"
+  return new Date().toISOString().split("T")[0];
 }
 
 function getUsageCount(code) {
@@ -37,7 +33,6 @@ function incrementUsage(code) {
 }
 
 exports.handler = async (event) => {
-  // CORS 처리
   const headers = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "Content-Type",
@@ -57,12 +52,11 @@ exports.handler = async (event) => {
     const body = JSON.parse(event.body);
     const { action, staffCode, beforeImage, afterImage, predictionId } = body;
 
-    // ── 예측 결과 조회 ──
+    // 결과 조회
     if (action === "check") {
       if (!predictionId) {
         return { statusCode: 400, headers, body: JSON.stringify({ error: "predictionId 없음" }) };
       }
-
       const resp = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
         headers: { Authorization: `Token ${REPLICATE_TOKEN}` },
       });
@@ -70,10 +64,8 @@ exports.handler = async (event) => {
       return { statusCode: 200, headers, body: JSON.stringify(data) };
     }
 
-    // ── 시뮬레이션 시작 ──
+    // 시뮬레이션 시작
     if (action === "simulate") {
-
-      // 직원 코드 검증
       if (!staffCode) {
         return { statusCode: 400, headers, body: JSON.stringify({ error: "코드를 입력해주세요" }) };
       }
@@ -83,7 +75,6 @@ exports.handler = async (event) => {
         return { statusCode: 403, headers, body: JSON.stringify({ error: "유효하지 않은 코드입니다" }) };
       }
 
-      // 사용 횟수 체크
       const used = getUsageCount(staffCode);
       if (used >= staff.dailyLimit) {
         return {
@@ -97,36 +88,34 @@ exports.handler = async (event) => {
         return { statusCode: 400, headers, body: JSON.stringify({ error: "사진을 모두 업로드해주세요" }) };
       }
 
-      // Replicate API 호출
+      // instant-id 최신 버전으로 호출
       const resp = await fetch("https://api.replicate.com/v1/predictions", {
         method: "POST",
         headers: {
           Authorization: `Token ${REPLICATE_TOKEN}`,
           "Content-Type": "application/json",
+          "Prefer": "wait",
         },
         body: JSON.stringify({
-          version: "491ddf5be6b827f8931f088ef10c6d015f6d99f2f08fa8d2d38d56439bef7f56",
+          version: "f1ca369da43885a347690a98f6b710afbf5f167cb9bf13bd5af512ba4a9f7b63",
           input: {
             image: beforeImage,
-            pose_image: afterImage,
             prompt: "a person with this hairstyle, natural photo, high quality, realistic",
             negative_prompt: "ugly, blurry, low quality, deformed",
-            num_outputs: 1,
-            guidance_scale: 5,
+            width: 640,
+            height: 640,
             ip_adapter_scale: 0.8,
             controlnet_conditioning_scale: 0.8,
           },
         }),
       });
 
-      if (!resp.ok) {
-        const err = await resp.json();
-        return { statusCode: 500, headers, body: JSON.stringify({ error: err.detail || "Replicate API 오류" }) };
-      }
-
       const data = await resp.json();
 
-      // 사용 횟수 증가
+      if (!resp.ok) {
+        return { statusCode: 500, headers, body: JSON.stringify({ error: data.detail || "Replicate API 오류" }) };
+      }
+
       incrementUsage(staffCode);
 
       return {
