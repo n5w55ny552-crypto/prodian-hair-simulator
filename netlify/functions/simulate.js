@@ -52,6 +52,9 @@ exports.handler = async (event) => {
     const body = JSON.parse(event.body);
     const { action, staffCode, beforeImage, afterImage, predictionId } = body;
 
+    console.log("액션:", action, "코드:", staffCode);
+    console.log("토큰 존재:", !!REPLICATE_TOKEN);
+
     // 결과 조회
     if (action === "check") {
       if (!predictionId) {
@@ -61,6 +64,7 @@ exports.handler = async (event) => {
         headers: { Authorization: `Token ${REPLICATE_TOKEN}` },
       });
       const data = await resp.json();
+      console.log("체크 결과:", data.status);
       return { statusCode: 200, headers, body: JSON.stringify(data) };
     }
 
@@ -72,6 +76,7 @@ exports.handler = async (event) => {
 
       const staff = STAFF_CODES[staffCode.toUpperCase()];
       if (!staff) {
+        console.log("유효하지 않은 코드:", staffCode);
         return { statusCode: 403, headers, body: JSON.stringify({ error: "유효하지 않은 코드입니다" }) };
       }
 
@@ -80,13 +85,16 @@ exports.handler = async (event) => {
         return {
           statusCode: 429,
           headers,
-          body: JSON.stringify({ error: `오늘 사용 한도(${staff.dailyLimit}회)를 초과했습니다. 자정에 초기화됩니다.` }),
+          body: JSON.stringify({ error: `오늘 사용 한도(${staff.dailyLimit}회)를 초과했습니다.` }),
         };
       }
 
       if (!beforeImage || !afterImage) {
         return { statusCode: 400, headers, body: JSON.stringify({ error: "사진을 모두 업로드해주세요" }) };
       }
+
+      console.log("Replicate API 호출 시작...");
+      console.log("이미지 크기:", beforeImage.length, afterImage.length);
 
       const resp = await fetch("https://api.replicate.com/v1/predictions", {
         method: "POST",
@@ -109,7 +117,9 @@ exports.handler = async (event) => {
         }),
       });
 
+      console.log("Replicate 응답 상태:", resp.status);
       const data = await resp.json();
+      console.log("Replicate 응답:", JSON.stringify(data).slice(0, 300));
 
       if (!resp.ok) {
         return { statusCode: 500, headers, body: JSON.stringify({ error: data.detail || "Replicate API 오류" }) };
@@ -132,6 +142,7 @@ exports.handler = async (event) => {
     return { statusCode: 400, headers, body: JSON.stringify({ error: "잘못된 요청" }) };
 
   } catch (err) {
+    console.log("오류 발생:", err.message);
     return { statusCode: 500, headers, body: JSON.stringify({ error: err.message }) };
   }
 };
