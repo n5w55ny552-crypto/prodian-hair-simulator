@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PRODIAN 헤어 시뮬레이터</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green: #2d5a3d;
+    --light-green: #eaf2ec;
+    --mid-green: #c8dece;
+    --white: #ffffff;
+    --text: #1a1a1a;
+    --text-light: #666;
+    --border: #e0e0e0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--light-green);
+    min-height: 100vh;
+    color: var(--text);
+  }
+  header {
+    background: var(--green);
+    color: white;
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .logo { font-family: 'DM Serif Display', serif; font-size: 22px; letter-spacing: 1px; }
+  .logo span { font-family: 'Noto Sans KR', sans-serif; font-size: 11px; display: block; opacity: 0.7; letter-spacing: 2px; }
+  .container { max-width: 860px; margin: 0 auto; padding: 32px 20px; }
+
+  /* 모드 선택 */
+  .mode-tabs {
+    display: flex;
+    background: white;
+    border-radius: 12px;
+    padding: 6px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 12px rgba(45,90,61,0.08);
+  }
+  .mode-tab {
+    flex: 1;
+    padding: 12px;
+    text-align: center;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text-light);
+    border: none;
+    background: none;
+    font-family: 'Noto Sans KR', sans-serif;
+  }
+  .mode-tab.active {
+    background: var(--green);
+    color: white;
+    font-weight: 700;
+  }
+
+  .card {
+    background: white;
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 12px rgba(45,90,61,0.08);
+  }
+  .card-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--green);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title::before {
+    content: '';
+    display: block;
+    width: 4px;
+    height: 18px;
+    background: var(--green);
+    border-radius: 2px;
+  }
+
+  /* 코드 입력 */
+  .code-input-wrap {
+    display: flex;
+    gap: 10px;
+  }
+  .code-input {
+    flex: 1;
+    padding: 14px 16px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    font-size: 16px;
+    font-family: monospace;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .code-input:focus { border-color: var(--green); }
+  .code-input.valid { border-color: #4caf50; background: #f0fff0; }
+  .code-input.invalid { border-color: #f44336; background: #fff0f0; }
+
+  .btn-verify {
+    padding: 14px 20px;
+    background: var(--green);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .staff-info {
+    display: none;
+    margin-top: 12px;
+    padding: 12px 16px;
+    background: var(--light-green);
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--green);
+  }
+  .staff-info.show { display: flex; align-items: center; justify-content: space-between; }
+
+  /* 업로드 */
+  .upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .upload-label-text { font-size: 13px; color: var(--text-light); margin-bottom: 8px; text-align: center; }
+  .upload-box {
+    border: 2px dashed var(--mid-green);
+    border-radius: 12px;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--light-green);
+    position: relative;
+    overflow: hidden;
+  }
+  .upload-box:hover { border-color: var(--green); background: #deeee3; }
+  .upload-box.has-image { border-style: solid; border-color: var(--green); padding: 0; }
+  .upload-box img { width: 100%; height: 200px; object-fit: cover; border-radius: 10px; }
+  .upload-box .overlay {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: linear-gradient(transparent, rgba(0,0,0,0.6));
+    color: white; padding: 10px; font-size: 13px; text-align: center;
+  }
+  .upload-icon { font-size: 32px; margin-bottom: 10px; }
+  .upload-name { font-size: 14px; font-weight: 600; color: var(--green); margin-bottom: 4px; }
+  .upload-desc { font-size: 12px; color: var(--text-light); text-align: center; line-height: 1.5; }
+  input[type="file"] { display: none; }
+
+  /* 버튼 */
+  .btn-primary {
+    background: var(--green);
+    color: white;
+    border: none;
+    padding: 16px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+  }
+  .btn-primary:hover:not(:disabled) { background: #1e3f2a; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(45,90,61,0.3); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  /* 로딩 */
+  .loading { display: none; text-align: center; padding: 48px 0; }
+  .loading.show { display: block; }
+  .spinner {
+    width: 52px; height: 52px;
+    border: 4px solid var(--mid-green);
+    border-top-color: var(--green);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 20px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { color: var(--green); font-weight: 600; font-size: 16px; }
+  .loading-sub { color: var(--text-light); font-size: 13px; margin-top: 8px; }
+
+  /* 결과 */
+  .result-area { display: none; }
+  .result-area.show { display: block; }
+  .result-image { width: 100%; border-radius: 12px; max-height: 500px; object-fit: contain; }
+  .btn-download {
+    display: inline-flex; align-items: center; gap: 6px;
+    margin-top: 16px; padding: 12px 24px;
+    background: white; color: var(--green);
+    border: 2px solid var(--green); border-radius: 8px;
+    font-size: 14px; font-weight: 600; font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .btn-download:hover { background: var(--light-green); }
+
+  /* 상태 */
+  .status { padding: 14px 16px; border-radius: 10px; font-size: 14px; margin-top: 12px; display: none; }
+  .status.error { display: block; background: #fff0f0; color: #cc0000; border: 1px solid #ffcccc; }
+  .status.success { display: block; background: var(--light-green); color: var(--green); border: 1px solid var(--mid-green); }
+
+  /* 무료 안내 */
+  .free-badge {
+    background: linear-gradient(135deg, var(--green), #4a8a5f);
+    color: white;
+    padding: 20px 24px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    text-align: center;
+  }
+  .free-badge h2 { font-family: 'DM Serif Display', serif; font-size: 24px; margin-bottom: 6px; }
+  .free-badge p { font-size: 13px; opacity: 0.85; }
+
+  @media (max-width: 600px) {
+    .upload-grid { grid-template-columns: 1fr; }
+    .container { padding: 20px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">PRODIAN <span>HAIR SIMULATOR</span></div>
+</header>
+
+<div class="container">
+
+  <!-- 모드 탭 -->
+  <div class="mode-tabs">
+    <button class="mode-tab active" onclick="setMode('guest')" id="tab-guest">👤 일반 고객</button>
+    <button class="mode-tab" onclick="setMode('staff')" id="tab-staff">💼 직원 전용</button>
+  </div>
+
+  <!-- 일반 고객 모드 -->
+  <div id="mode-guest">
+    <div class="free-badge">
+      <h2>✨ 1회 무료 체험</h2>
+      <p>AI가 내 얼굴에 원하는 헤어스타일을 합성해드려요</p>
+    </div>
+  </div>
+
+  <!-- 직원 모드 -->
+  <div id="mode-staff" style="display:none;">
+    <div class="card">
+      <div class="card-title">직원 코드 입력</div>
+      <div class="code-input-wrap">
+        <input type="text" class="code-input" id="staff-code" placeholder="PROD-0001" maxlength="12">
+        <button class="btn-verify" onclick="verifyCode()">확인</button>
+      </div>
+      <div class="staff-info" id="staff-info">
+        <span id="staff-name-display">-</span>
+        <span id="staff-usage-display" style="font-size:13px;">-</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 사진 업로드 -->
+  <div class="card">
+    <div class="card-title">사진 업로드</div>
+    <div class="upload-grid">
+      <div>
+        <p class="upload-label-text">📷 내 사진 (비포)</p>
+        <div class="upload-box" id="box-before" onclick="document.getElementById('input-before').click()">
+          <div class="upload-icon">👤</div>
+          <div class="upload-name">내 사진 업로드</div>
+          <div class="upload-desc">정면 얼굴 사진<br>JPG / PNG</div>
+        </div>
+        <input type="file" id="input-before" accept="image/*" onchange="previewImage(this, 'box-before', 'before')">
+      </div>
+      <div>
+        <p class="upload-label-text">✂️ 원하는 헤어스타일</p>
+        <div class="upload-box" id="box-after" onclick="document.getElementById('input-after').click()">
+          <div class="upload-icon">💇</div>
+          <div class="upload-name">스타일 사진 업로드</div>
+          <div class="upload-desc">원하는 헤어스타일<br>JPG / PNG</div>
+        </div>
+        <input type="file" id="input-after" accept="image/*" onchange="previewImage(this, 'box-after', 'after')">
+      </div>
+    </div>
+  </div>
+
+  <!-- 시작 버튼 -->
+  <button class="btn-primary" id="run-btn" onclick="runSimulator()" disabled>
+    ✨ 헤어 시뮬레이션 시작
+  </button>
+  <div class="status" id="status-msg"></div>
+
+  <!-- 로딩 -->
+  <div class="loading card" id="loading" style="margin-top:20px;">
+    <div class="spinner"></div>
+    <div class="loading-text">AI가 헤어스타일을 합성하고 있어요</div>
+    <div class="loading-sub" id="loading-sub">잠시만 기다려주세요... (보통 30~60초)</div>
+  </div>
+
+  <!-- 결과 -->
+  <div class="result-area card" id="result-area" style="margin-top:20px;">
+    <div class="card-title">합성 결과</div>
+    <img id="result-img" class="result-image" src="" alt="합성 결과">
+    <div style="text-align:center;">
+      <button class="btn-download" onclick="downloadResult()">💾 이미지 저장</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let currentMode = 'guest';
+  let staffVerified = false;
+  let imageData = { before: null, after: null };
+  let resultUrl = null;
+
+  // ── 모드 전환 ──
+  function setMode(mode) {
+    currentMode = mode;
+    document.getElementById('tab-guest').classList.toggle('active', mode === 'guest');
+    document.getElementById('tab-staff').classList.toggle('active', mode === 'staff');
+    document.getElementById('mode-guest').style.display = mode === 'guest' ? 'block' : 'none';
+    document.getElementById('mode-staff').style.display = mode === 'staff' ? 'block' : 'none';
+    if (mode === 'guest') staffVerified = false;
+    checkReady();
+  }
+
+  // ── 직원 코드 확인 ──
+  async function verifyCode() {
+    const code = document.getElementById('staff-code').value.trim().toUpperCase();
+    const input = document.getElementById('staff-code');
+
+    if (!code) return;
+
+    try {
+      const resp = await fetch('/.netlify/functions/simulate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'verify', staffCode: code })
+      });
+      const data = await resp.json();
+
+      if (resp.ok && data.valid) {
+        input.classList.add('valid');
+        input.classList.remove('invalid');
+        staffVerified = true;
+        const info = document.getElementById('staff-info');
+        info.classList.add('show');
+        document.getElementById('staff-name-display').textContent = `✅ ${data.staffName}`;
+        document.getElementById('staff-usage-display').textContent = `오늘 ${data.usedToday}회 사용 / ${data.dailyLimit}회 한도`;
+      } else {
+        input.classList.add('invalid');
+        input.classList.remove('valid');
+        staffVerified = false;
+        showStatus(data.error || '유효하지 않은 코드입니다', 'error');
+      }
+    } catch {
+      // 로컬 테스트용 임시 처리
+      const validCodes = ['PROD-0001','PROD-0002','PROD-0003','PROD-0004','PROD-0005',
+                          'PROD-0006','PROD-0007','PROD-0008','PROD-0009','PROD-0010','MASTER-9999'];
+      if (validCodes.includes(code)) {
+        input.classList.add('valid');
+        staffVerified = true;
+        document.getElementById('staff-info').classList.add('show');
+        document.getElementById('staff-name-display').textContent = `✅ ${code}`;
+        document.getElementById('staff-usage-display').textContent = '코드 확인됨';
+      } else {
+        input.classList.add('invalid');
+        showStatus('유효하지 않은 코드입니다', 'error');
+      }
+    }
+    checkReady();
+  }
+
+  document.getElementById('staff-code').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') verifyCode();
+  });
+
+  // ── 사진 미리보기 ──
+  function previewImage(input, boxId, type) {
+    if (!input.files[0]) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      imageData[type] = e.target.result;
+      const box = document.getElementById(boxId);
+      box.classList.add('has-image');
+      box.innerHTML = `
+        <img src="${e.target.result}" alt="preview">
+        <div class="overlay">✅ ${type === 'before' ? '내 사진' : '레퍼런스'} 완료</div>
+      `;
+      checkReady();
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+
+  // ── 버튼 활성화 체크 ──
+  function checkReady() {
+    const photosReady = imageData.before && imageData.after;
+    const modeReady = currentMode === 'guest' || (currentMode === 'staff' && staffVerified);
+    document.getElementById('run-btn').disabled = !(photosReady && modeReady);
+  }
+
+  // ── 상태 메시지 ──
+  function showStatus(msg, type) {
+    const el = document.getElementById('status-msg');
+    el.className = `status ${type}`;
+    el.textContent = msg;
+  }
+
+  // ── 시뮬레이션 실행 ──
+  async function runSimulator() {
+    document.getElementById('run-btn').disabled = true;
+    document.getElementById('loading').classList.add('show');
+    document.getElementById('result-area').classList.remove('show');
+    document.getElementById('status-msg').style.display = 'none';
+
+    const staffCode = currentMode === 'staff'
+      ? document.getElementById('staff-code').value.trim().toUpperCase()
+      : 'GUEST';
+
+    try {
+      const resp = await fetch('/.netlify/functions/simulate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'simulate',
+          staffCode,
+          beforeImage: imageData.before,
+          afterImage: imageData.after,
+        })
+      });
+
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'API 오류');
+
+      // 직원 사용 현황 업데이트
+      if (currentMode === 'staff' && data.remainingToday !== undefined) {
+        document.getElementById('staff-usage-display').textContent =
+          `오늘 ${data.usedToday}회 사용 / ${data.dailyLimit || 8}회 한도 (남은 횟수: ${data.remainingToday}회)`;
+      }
+
+      await pollResult(data.predictionId);
+
+    } catch (err) {
+      showStatus(`❌ ${err.message}`, 'error');
+      document.getElementById('loading').classList.remove('show');
+      document.getElementById('run-btn').disabled = false;
+    }
+  }
+
+  // ── 결과 폴링 ──
+  async function pollResult(predictionId) {
+    let attempts = 0;
+    const interval = setInterval(async () => {
+      attempts++;
+      document.getElementById('loading-sub').textContent = `처리 중... (${attempts * 2}초 경과)`;
+
+      try {
+        const resp = await fetch('/.netlify/functions/simulate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'check', predictionId })
+        });
+        const data = await resp.json();
+
+        if (data.status === 'succeeded') {
+          clearInterval(interval);
+          const url = Array.isArray(data.output) ? data.output[0] : data.output;
+          showResult(url);
+        } else if (data.status === 'failed') {
+          clearInterval(interval);
+          throw new Error(data.error || '처리 실패');
+        } else if (attempts >= 60) {
+          clearInterval(interval);
+          throw new Error('시간 초과 (2분)');
+        }
+      } catch (err) {
+        clearInterval(interval);
+        showStatus(`❌ ${err.message}`, 'error');
+        document.getElementById('loading').classList.remove('show');
+        document.getElementById('run-btn').disabled = false;
+      }
+    }, 2000);
+  }
+
+  // ── 결과 표시 ──
+  function showResult(url) {
+    resultUrl = url;
+    document.getElementById('loading').classList.remove('show');
+    document.getElementById('result-area').classList.add('show');
+    document.getElementById('result-img').src = url;
+    document.getElementById('run-btn').disabled = false;
+    showStatus('✅ 합성 완료!', 'success');
+  }
+
+  // ── 다운로드 ──
+  function downloadResult() {
+    if (!resultUrl) return;
+    const a = document.createElement('a');
+    a.href = resultUrl;
+    a.download = `PRODIAN_헤어_${Date.now()}.jpg`;
+    a.target = '_blank';
+    a.click();
+  }
+</script>
+</body>
+</html>
