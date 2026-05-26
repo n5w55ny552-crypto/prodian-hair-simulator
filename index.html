@@ -34,7 +34,6 @@
   .logo span { font-family: 'Noto Sans KR', sans-serif; font-size: 11px; display: block; opacity: 0.7; letter-spacing: 2px; }
   .container { max-width: 860px; margin: 0 auto; padding: 32px 20px; }
 
-  /* 모드 선택 */
   .mode-tabs {
     display: flex;
     background: white;
@@ -57,11 +56,7 @@
     background: none;
     font-family: 'Noto Sans KR', sans-serif;
   }
-  .mode-tab.active {
-    background: var(--green);
-    color: white;
-    font-weight: 700;
-  }
+  .mode-tab.active { background: var(--green); color: white; font-weight: 700; }
 
   .card {
     background: white;
@@ -88,11 +83,7 @@
     border-radius: 2px;
   }
 
-  /* 코드 입력 */
-  .code-input-wrap {
-    display: flex;
-    gap: 10px;
-  }
+  .code-input-wrap { display: flex; gap: 10px; }
   .code-input {
     flex: 1;
     padding: 14px 16px;
@@ -133,7 +124,6 @@
   }
   .staff-info.show { display: flex; align-items: center; justify-content: space-between; }
 
-  /* 업로드 */
   .upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   .upload-label-text { font-size: 13px; color: var(--text-light); margin-bottom: 8px; text-align: center; }
   .upload-box {
@@ -163,7 +153,6 @@
   .upload-desc { font-size: 12px; color: var(--text-light); text-align: center; line-height: 1.5; }
   input[type="file"] { display: none; }
 
-  /* 버튼 */
   .btn-primary {
     background: var(--green);
     color: white;
@@ -180,7 +169,6 @@
   .btn-primary:hover:not(:disabled) { background: #1e3f2a; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(45,90,61,0.3); }
   .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
-  /* 로딩 */
   .loading { display: none; text-align: center; padding: 48px 0; }
   .loading.show { display: block; }
   .spinner {
@@ -195,7 +183,6 @@
   .loading-text { color: var(--green); font-weight: 600; font-size: 16px; }
   .loading-sub { color: var(--text-light); font-size: 13px; margin-top: 8px; }
 
-  /* 결과 */
   .result-area { display: none; }
   .result-area.show { display: block; }
   .result-image { width: 100%; border-radius: 12px; max-height: 500px; object-fit: contain; }
@@ -209,12 +196,10 @@
   }
   .btn-download:hover { background: var(--light-green); }
 
-  /* 상태 */
   .status { padding: 14px 16px; border-radius: 10px; font-size: 14px; margin-top: 12px; display: none; }
   .status.error { display: block; background: #fff0f0; color: #cc0000; border: 1px solid #ffcccc; }
   .status.success { display: block; background: var(--light-green); color: var(--green); border: 1px solid var(--mid-green); }
 
-  /* 무료 안내 */
   .free-badge {
     background: linear-gradient(135deg, var(--green), #4a8a5f);
     color: white;
@@ -240,13 +225,11 @@
 
 <div class="container">
 
-  <!-- 모드 탭 -->
   <div class="mode-tabs">
     <button class="mode-tab active" onclick="setMode('guest')" id="tab-guest">👤 일반 고객</button>
     <button class="mode-tab" onclick="setMode('staff')" id="tab-staff">💼 직원 전용</button>
   </div>
 
-  <!-- 일반 고객 모드 -->
   <div id="mode-guest">
     <div class="free-badge">
       <h2>✨ 1회 무료 체험</h2>
@@ -254,7 +237,6 @@
     </div>
   </div>
 
-  <!-- 직원 모드 -->
   <div id="mode-staff" style="display:none;">
     <div class="card">
       <div class="card-title">직원 코드 입력</div>
@@ -269,7 +251,6 @@
     </div>
   </div>
 
-  <!-- 사진 업로드 -->
   <div class="card">
     <div class="card-title">사진 업로드</div>
     <div class="upload-grid">
@@ -294,20 +275,17 @@
     </div>
   </div>
 
-  <!-- 시작 버튼 -->
   <button class="btn-primary" id="run-btn" onclick="runSimulator()" disabled>
     ✨ 헤어 시뮬레이션 시작
   </button>
   <div class="status" id="status-msg"></div>
 
-  <!-- 로딩 -->
   <div class="loading card" id="loading" style="margin-top:20px;">
     <div class="spinner"></div>
     <div class="loading-text">AI가 헤어스타일을 합성하고 있어요</div>
-    <div class="loading-sub" id="loading-sub">잠시만 기다려주세요... (보통 30~60초)</div>
+    <div class="loading-sub">잠시만 기다려주세요... (보통 30~60초)</div>
   </div>
 
-  <!-- 결과 -->
   <div class="result-area card" id="result-area" style="margin-top:20px;">
     <div class="card-title">합성 결과</div>
     <img id="result-img" class="result-image" src="" alt="합성 결과">
@@ -324,7 +302,6 @@
   let imageData = { before: null, after: null };
   let resultUrl = null;
 
-  // ── 모드 전환 ──
   function setMode(mode) {
     currentMode = mode;
     document.getElementById('tab-guest').classList.toggle('active', mode === 'guest');
@@ -335,49 +312,23 @@
     checkReady();
   }
 
-  // ── 직원 코드 확인 ──
   async function verifyCode() {
     const code = document.getElementById('staff-code').value.trim().toUpperCase();
     const input = document.getElementById('staff-code');
-
-    if (!code) return;
-
-    try {
-      const resp = await fetch('/.netlify/functions/simulate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'verify', staffCode: code })
-      });
-      const data = await resp.json();
-
-      if (resp.ok && data.valid) {
-        input.classList.add('valid');
-        input.classList.remove('invalid');
-        staffVerified = true;
-        const info = document.getElementById('staff-info');
-        info.classList.add('show');
-        document.getElementById('staff-name-display').textContent = `✅ ${data.staffName}`;
-        document.getElementById('staff-usage-display').textContent = `오늘 ${data.usedToday}회 사용 / ${data.dailyLimit}회 한도`;
-      } else {
-        input.classList.add('invalid');
-        input.classList.remove('valid');
-        staffVerified = false;
-        showStatus(data.error || '유효하지 않은 코드입니다', 'error');
-      }
-    } catch {
-      // 로컬 테스트용 임시 처리
-      const validCodes = ['PROD-0001','PROD-0002','PROD-0003','PROD-0004','PROD-0005',
-                          'PROD-0006','PROD-0007','PROD-0008','PROD-0009','PROD-0010','MASTER-9999'];
-      if (validCodes.includes(code)) {
-        input.classList.add('valid');
-        staffVerified = true;
-        document.getElementById('staff-info').classList.add('show');
-        document.getElementById('staff-name-display').textContent = `✅ ${code}`;
-        document.getElementById('staff-usage-display').textContent = '코드 확인됨';
-      } else {
-        input.classList.add('invalid');
-        showStatus('유효하지 않은 코드입니다', 'error');
-      }
+    const validCodes = ['PROD-0001','PROD-0002','PROD-0003','PROD-0004','PROD-0005',
+                        'PROD-0006','PROD-0007','PROD-0008','PROD-0009','PROD-0010','MASTER-9999'];
+    if (validCodes.includes(code)) {
+      input.classList.add('valid');
+      input.classList.remove('invalid');
+      staffVerified = true;
+      document.getElementById('staff-info').classList.add('show');
+      document.getElementById('staff-name-display').textContent = `✅ ${code}`;
+      document.getElementById('staff-usage-display').textContent = '코드 확인됨';
+    } else {
+      input.classList.add('invalid');
+      input.classList.remove('valid');
+      staffVerified = false;
+      showStatus('유효하지 않은 코드입니다', 'error');
     }
     checkReady();
   }
@@ -386,7 +337,6 @@
     if (e.key === 'Enter') verifyCode();
   });
 
-  // ── 사진 미리보기 ──
   function previewImage(input, boxId, type) {
     if (!input.files[0]) return;
     const reader = new FileReader();
@@ -403,21 +353,18 @@
     reader.readAsDataURL(input.files[0]);
   }
 
-  // ── 버튼 활성화 체크 ──
   function checkReady() {
     const photosReady = imageData.before && imageData.after;
     const modeReady = currentMode === 'guest' || (currentMode === 'staff' && staffVerified);
     document.getElementById('run-btn').disabled = !(photosReady && modeReady);
   }
 
-  // ── 상태 메시지 ──
   function showStatus(msg, type) {
     const el = document.getElementById('status-msg');
     el.className = `status ${type}`;
     el.textContent = msg;
   }
 
-  // ── 시뮬레이션 실행 ──
   async function runSimulator() {
     document.getElementById('run-btn').disabled = true;
     document.getElementById('loading').classList.add('show');
@@ -429,11 +376,11 @@
       : 'GUEST';
 
     try {
+      // 한 번에 결과 받기 (폴링 없음)
       const resp = await fetch('/.netlify/functions/simulate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'simulate',
           staffCode,
           beforeImage: imageData.before,
           afterImage: imageData.after,
@@ -441,15 +388,10 @@
       });
 
       const data = await resp.json();
+
       if (!resp.ok) throw new Error(data.error || 'API 오류');
 
-      // 직원 사용 현황 업데이트
-      if (currentMode === 'staff' && data.remainingToday !== undefined) {
-        document.getElementById('staff-usage-display').textContent =
-          `오늘 ${data.usedToday}회 사용 / ${data.dailyLimit || 8}회 한도 (남은 횟수: ${data.remainingToday}회)`;
-      }
-
-      await pollResult(data.predictionId);
+      showResult(data.resultUrl);
 
     } catch (err) {
       showStatus(`❌ ${err.message}`, 'error');
@@ -458,42 +400,6 @@
     }
   }
 
-  // ── 결과 폴링 ──
-  async function pollResult(predictionId) {
-    let attempts = 0;
-    const interval = setInterval(async () => {
-      attempts++;
-      document.getElementById('loading-sub').textContent = `처리 중... (${attempts * 2}초 경과)`;
-
-      try {
-        const resp = await fetch('/.netlify/functions/simulate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'check', predictionId })
-        });
-        const data = await resp.json();
-
-        if (data.status === 'succeeded') {
-          clearInterval(interval);
-          const url = Array.isArray(data.output) ? data.output[0] : data.output;
-          showResult(url);
-        } else if (data.status === 'failed') {
-          clearInterval(interval);
-          throw new Error(data.error || '처리 실패');
-        } else if (attempts >= 60) {
-          clearInterval(interval);
-          throw new Error('시간 초과 (2분)');
-        }
-      } catch (err) {
-        clearInterval(interval);
-        showStatus(`❌ ${err.message}`, 'error');
-        document.getElementById('loading').classList.remove('show');
-        document.getElementById('run-btn').disabled = false;
-      }
-    }, 2000);
-  }
-
-  // ── 결과 표시 ──
   function showResult(url) {
     resultUrl = url;
     document.getElementById('loading').classList.remove('show');
@@ -503,13 +409,11 @@
     showStatus('✅ 합성 완료!', 'success');
   }
 
-  // ── 다운로드 ──
   function downloadResult() {
     if (!resultUrl) return;
     const a = document.createElement('a');
     a.href = resultUrl;
-    a.download = `PRODIAN_헤어_${Date.now()}.jpg`;
-    a.target = '_blank';
+    a.download = `PRODIAN_헤어_${Date.now()}.png`;
     a.click();
   }
 </script>
