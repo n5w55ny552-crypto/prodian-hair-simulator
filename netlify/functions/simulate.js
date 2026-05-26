@@ -1,5 +1,5 @@
 // netlify/functions/simulate.js
-const REPLICATE_TOKEN = process.env.REPLICATE_API_TOKEN;
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 const STAFF_CODES = {
   "GUEST": { name: "일반고객", dailyLimit: 1 },
@@ -50,99 +50,120 @@ exports.handler = async (event) => {
 
   try {
     const body = JSON.parse(event.body);
-    const { action, staffCode, beforeImage, afterImage, predictionId } = body;
+    const { staffCode, beforeImage, afterImage } = body;
 
-    console.log("액션:", action, "코드:", staffCode);
-    console.log("토큰 존재:", !!REPLICATE_TOKEN);
+    console.log("요청 수신 - 코드:", staffCode);
+    console.log("OpenAI 키 존재:", !!OPENAI_API_KEY);
 
-    // 결과 조회
-    if (action === "check") {
-      if (!predictionId) {
-        return { statusCode: 400, headers, body: JSON.stringify({ error: "predictionId 없음" }) };
-      }
-      const resp = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
-        headers: { Authorization: `Token ${REPLICATE_TOKEN}` },
-      });
-      const data = await resp.json();
-      console.log("체크 결과:", data.status);
-      return { statusCode: 200, headers, body: JSON.stringify(data) };
+    if (!staffCode) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: "코드를 입력해주세요" }) };
     }
 
-    // 시뮬레이션 시작
-    if (action === "simulate") {
-      if (!staffCode) {
-        return { statusCode: 400, headers, body: JSON.stringify({ error: "코드를 입력해주세요" }) };
-      }
+    const staff = STAFF_CODES[staffCode.toUpperCase()];
+    if (!staff) {
+      return { statusCode: 403, headers, body: JSON.stringify({ error: "유효하지 않은 코드입니다" }) };
+    }
 
-      const staff = STAFF_CODES[staffCode.toUpperCase()];
-      if (!staff) {
-        console.log("유효하지 않은 코드:", staffCode);
-        return { statusCode: 403, headers, body: JSON.stringify({ error: "유효하지 않은 코드입니다" }) };
-      }
-
-      const used = getUsageCount(staffCode);
-      if (used >= staff.dailyLimit) {
-        return {
-          statusCode: 429,
-          headers,
-          body: JSON.stringify({ error: `오늘 사용 한도(${staff.dailyLimit}회)를 초과했습니다.` }),
-        };
-      }
-
-      if (!beforeImage || !afterImage) {
-        return { statusCode: 400, headers, body: JSON.stringify({ error: "사진을 모두 업로드해주세요" }) };
-      }
-
-      console.log("Replicate API 호출 시작...");
-      console.log("이미지 크기:", beforeImage.length, afterImage.length);
-
-      const resp = await fetch("https://api.replicate.com/v1/predictions", {
-        method: "POST",
-        headers: {
-          Authorization: `Token ${REPLICATE_TOKEN}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          version: "f1ca369da43885a347690a98f6b710afbf5f167cb9bf13bd5af512ba4a9f7b63",
-          input: {
-            image: beforeImage,
-            pose_image: afterImage,
-            prompt: "a person with this hairstyle, natural photo, high quality, realistic",
-            negative_prompt: "ugly, blurry, low quality, deformed",
-            width: 640,
-            height: 640,
-            ip_adapter_scale: 0.8,
-            controlnet_conditioning_scale: 0.8,
-          },
-        }),
-      });
-
-      console.log("Replicate 응답 상태:", resp.status);
-      const data = await resp.json();
-      console.log("Replicate 응답:", JSON.stringify(data).slice(0, 300));
-
-      if (!resp.ok) {
-        return { statusCode: 500, headers, body: JSON.stringify({ error: data.detail || "Replicate API 오류" }) };
-      }
-
-      incrementUsage(staffCode);
-
+    const used = getUsageCount(staffCode);
+    if (used >= staff.dailyLimit) {
       return {
-        statusCode: 200,
+        statusCode: 429,
         headers,
-        body: JSON.stringify({
-          predictionId: data.id,
-          staffName: staff.name,
-          usedToday: used + 1,
-          remainingToday: staff.dailyLimit - (used + 1),
-        }),
+        body: JSON.stringify({ error: `오늘 사용 한도(${staff.dailyLimit}회)를 초과했습니다. 자정에 초기화됩니다.` }),
       };
     }
 
-    return { statusCode: 400, headers, body: JSON.stringify({ error: "잘못된 요청" }) };
+    if (!beforeImage || !afterImage) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: "사진을 모두 업로드해주세요" }) };
+    }
+
+    // base64에서 데이터 부분만 추출
+    const beforeBase64 = beforeImage.replace(/^data:image\/\w+;base64,/, "");
+    const afterBase64 = afterImage.replace(/^data:image\/\w+;base64,/, "");
+
+    console.log("OpenAI API 호출 시작...");
+
+    // Step 1: 레퍼런스 헤어스타일 분석
+    const analysisResp = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "image_url",
+                image_url: { url: `data:image/jpeg;base64,${afterBase64}` }
+              },
+              {
+                type: "text",
+                text: "이 사진의 헤어스타일을 아주 구체적으로 영어로 설명해줘. 길이, 컬/직모 여부, 색상, 스타일링 방식 등을 포함해서 50단어 이내로."
+              }
+            ]
+          }
+        ],
+        max_tokens: 150
+      })
+    });
+
+    const analysisData = await analysisResp.json();
+    const hairDescription = analysisData.choices[0].message.content;
+    console.log("헤어스타일 분석:", hairDescription);
+
+    // Step 2: DALL-E로 합성 이미지 생성
+    const generateResp = await fetch("https://api.openai.com/v1/images/edits", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: (() => {
+        const formData = new FormData();
+        
+        // base64를 Blob으로 변환
+        const beforeBuffer = Buffer.from(beforeBase64, 'base64');
+        const beforeBlob = new Blob([beforeBuffer], { type: 'image/png' });
+        
+        formData.append('image', beforeBlob, 'before.png');
+        formData.append('prompt', `Change only the hairstyle of this person to: ${hairDescription}. Keep the face, skin tone, and everything else exactly the same. Only change the hair. Photorealistic, natural looking.`);
+        formData.append('model', 'dall-e-2');
+        formData.append('n', '1');
+        formData.append('size', '512x512');
+        
+        return formData;
+      })()
+    });
+
+    console.log("이미지 생성 응답 상태:", generateResp.status);
+    const generateData = await generateResp.json();
+    console.log("이미지 생성 결과:", JSON.stringify(generateData).slice(0, 200));
+
+    if (!generateResp.ok) {
+      return { statusCode: 500, headers, body: JSON.stringify({ error: generateData.error?.message || "이미지 생성 오류" }) };
+    }
+
+    incrementUsage(staffCode);
+
+    const resultUrl = generateData.data[0].url;
+
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        resultUrl,
+        staffName: staff.name,
+        usedToday: used + 1,
+        remainingToday: staff.dailyLimit - (used + 1),
+        hairDescription,
+      }),
+    };
 
   } catch (err) {
-    console.log("오류 발생:", err.message);
+    console.log("오류:", err.message);
     return { statusCode: 500, headers, body: JSON.stringify({ error: err.message }) };
   }
 };
