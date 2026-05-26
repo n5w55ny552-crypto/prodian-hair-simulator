@@ -2,10 +2,6 @@
   functions = "netlify/functions"
   publish = "."
 
-[functions]
-  node_bundler = "esbuild"
-  timeout = 300
-
 [[headers]]
   for = "/*"
   [headers.values]
