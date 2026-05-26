@@ -130,7 +130,7 @@ exports.handler = async (event) => {
         
         formData.append('image', beforeBlob, 'before.png');
         formData.append('prompt', `Change only the hairstyle of this person to: ${hairDescription}. Keep the face, skin tone, and everything else exactly the same. Only change the hair. Photorealistic, natural looking.`);
-        formData.append('model', 'dall-e-2');
+        formData.append('model', 'dall-e-3');
         formData.append('n', '1');
         formData.append('size', '512x512');
         
