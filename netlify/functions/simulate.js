@@ -77,13 +77,9 @@ exports.handler = async (event) => {
       return { statusCode: 400, headers, body: JSON.stringify({ error: "사진을 모두 업로드해주세요" }) };
     }
 
-    // base64에서 데이터 부분만 추출
-    const beforeBase64 = beforeImage.replace(/^data:image\/\w+;base64,/, "");
-    const afterBase64 = afterImage.replace(/^data:image\/\w+;base64,/, "");
+    console.log("GPT-4o로 분석 시작...");
 
-    console.log("OpenAI API 호출 시작...");
-
-    // Step 1: 레퍼런스 헤어스타일 분석
+    // Step 1: GPT-4o로 두 사진 동시 분석
     const analysisResp = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -96,51 +92,46 @@ exports.handler = async (event) => {
           {
             role: "user",
             content: [
-              {
-                type: "image_url",
-                image_url: { url: `data:image/jpeg;base64,${afterBase64}` }
-              },
-              {
-                type: "text",
-                text: "이 사진의 헤어스타일을 아주 구체적으로 영어로 설명해줘. 길이, 컬/직모 여부, 색상, 스타일링 방식 등을 포함해서 50단어 이내로."
-              }
+              { type: "text", text: "첫 번째 사진의 사람 얼굴 특징(피부톤, 얼굴형, 눈, 코, 입 등)을 자세히 설명하고, 두 번째 사진의 헤어스타일(길이, 질감, 색상, 스타일)을 자세히 설명해줘. 영어로 답해줘." },
+              { type: "image_url", image_url: { url: beforeImage } },
+              { type: "image_url", image_url: { url: afterImage } },
             ]
           }
         ],
-        max_tokens: 150
+        max_tokens: 300
       })
     });
 
     const analysisData = await analysisResp.json();
-    const hairDescription = analysisData.choices[0].message.content;
-    console.log("헤어스타일 분석:", hairDescription);
+    const description = analysisData.choices[0].message.content;
+    console.log("분석 완료:", description.slice(0, 100));
 
-    // Step 2: DALL-E로 합성 이미지 생성
-    const generateResp = await fetch("https://api.openai.com/v1/images/edits", {
+    // Step 2: gpt-image-1로 이미지 생성
+    const prompt = `A photorealistic portrait photo of a person with these exact facial features: ${description}. 
+    The person should have the hairstyle from the second image description above. 
+    Keep the face identical to the first image. Only change the hairstyle. 
+    Natural lighting, high quality photo, realistic.`;
+
+    console.log("이미지 생성 시작...");
+
+    const generateResp = await fetch("https://api.openai.com/v1/images/generations", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
       },
-      body: (() => {
-        const formData = new FormData();
-        
-        // base64를 Blob으로 변환
-        const beforeBuffer = Buffer.from(beforeBase64, 'base64');
-        const beforeBlob = new Blob([beforeBuffer], { type: 'image/png' });
-        
-        formData.append('image', beforeBlob, 'before.png');
-        formData.append('prompt', `Change only the hairstyle of this person to: ${hairDescription}. Keep the face, skin tone, and everything else exactly the same. Only change the hair. Photorealistic, natural looking.`);
-        formData.append('model', 'dall-e-3');
-        formData.append('n', '1');
-        formData.append('size', '512x512');
-        
-        return formData;
-      })()
+      body: JSON.stringify({
+        model: "gpt-image-1",
+        prompt: prompt,
+        n: 1,
+        size: "1024x1024",
+        quality: "medium",
+      }),
     });
 
     console.log("이미지 생성 응답 상태:", generateResp.status);
     const generateData = await generateResp.json();
-    console.log("이미지 생성 결과:", JSON.stringify(generateData).slice(0, 200));
+    console.log("이미지 생성 결과:", JSON.stringify(generateData).slice(0, 300));
 
     if (!generateResp.ok) {
       return { statusCode: 500, headers, body: JSON.stringify({ error: generateData.error?.message || "이미지 생성 오류" }) };
@@ -148,7 +139,9 @@ exports.handler = async (event) => {
 
     incrementUsage(staffCode);
 
-    const resultUrl = generateData.data[0].url;
+    // gpt-image-1은 base64로 반환
+    const imageBase64 = generateData.data[0].b64_json;
+    const resultUrl = `data:image/png;base64,${imageBase64}`;
 
     return {
       statusCode: 200,
@@ -158,7 +151,6 @@ exports.handler = async (event) => {
         staffName: staff.name,
         usedToday: used + 1,
         remainingToday: staff.dailyLimit - (used + 1),
-        hairDescription,
       }),
     };
 
