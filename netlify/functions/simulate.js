@@ -88,18 +88,17 @@ exports.handler = async (event) => {
         return { statusCode: 400, headers, body: JSON.stringify({ error: "사진을 모두 업로드해주세요" }) };
       }
 
-      // instant-id 최신 버전으로 호출
       const resp = await fetch("https://api.replicate.com/v1/predictions", {
         method: "POST",
         headers: {
           Authorization: `Token ${REPLICATE_TOKEN}`,
           "Content-Type": "application/json",
-          "Prefer": "wait",
         },
         body: JSON.stringify({
           version: "f1ca369da43885a347690a98f6b710afbf5f167cb9bf13bd5af512ba4a9f7b63",
           input: {
             image: beforeImage,
+            pose_image: afterImage,
             prompt: "a person with this hairstyle, natural photo, high quality, realistic",
             negative_prompt: "ugly, blurry, low quality, deformed",
             width: 640,
